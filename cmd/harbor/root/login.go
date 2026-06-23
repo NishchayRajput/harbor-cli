@@ -16,6 +16,7 @@ package root
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/user"
 	"github.com/goharbor/harbor-cli/pkg/utils"
 	"github.com/goharbor/harbor-cli/pkg/views/login"
+	"github.com/mdp/qrterminal/v3"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -233,6 +235,11 @@ func RunOIDCLogin(serverAddress string) error {
 	}
 
 	fmt.Printf("Open this URL in your browser to authenticate:\n\n  %s\n\n", loginResp.RedirectURL)
+	if term.IsTerminal(int(os.Stdout.Fd())) {
+		fmt.Println("Scan this QR code on your mobile if that is easier:")
+		WriteOIDCLoginQRCode(os.Stdout, loginResp.RedirectURL)
+		fmt.Println()
+	}
 	fmt.Print("Waiting for authentication...\n")
 
 	tokenResp, err := utils.PollForOIDCToken(serverAddress, loginResp.State, 10*time.Minute)
@@ -251,6 +258,15 @@ func RunOIDCLogin(serverAddress string) error {
 
 	fmt.Printf("Login successful for %s at %s\n", tokenResp.Username, serverAddress)
 	return nil
+}
+
+func WriteOIDCLoginQRCode(w io.Writer, loginURL string) {
+	qrterminal.GenerateWithConfig(loginURL, qrterminal.Config{
+		Level:      qrterminal.M,
+		Writer:     w,
+		HalfBlocks: true,
+		QuietZone:  1,
+	})
 }
 
 func validateClientConnection(client *client.HarborAPI) error {

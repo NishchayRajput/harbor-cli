@@ -14,6 +14,7 @@
 package root_test
 
 import (
+	"bytes"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -180,4 +181,12 @@ func Test_RunOIDCLogin_Success(t *testing.T) {
 	cred, err := utils.GetCredentials(utils.DefaultCredentialName("alice", server.URL))
 	assert.NoError(t, err)
 	assert.Equal(t, utils.AuthTypeOIDC, cred.AuthType)
+}
+
+func Test_writeOIDCLoginQRCode(t *testing.T) {
+	var buf bytes.Buffer
+
+	root.WriteOIDCLoginQRCode(&buf, "https://harbor.example.com/c/oidc/login?mode=cli")
+
+	assert.NotEmpty(t, buf.String())
 }
