@@ -19,9 +19,9 @@ import (
 
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
+	presentermember "github.com/goharbor/harbor-cli/pkg/presenter/member"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	list "github.com/goharbor/harbor-cli/pkg/views/member/list"
 	"github.com/sahilm/fuzzy"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -96,11 +96,8 @@ func ListMemberCommand() *cobra.Command {
 			}
 
 			VerboseFlag := viper.GetBool("verbose")
-
-			if VerboseFlag {
-				list.ListMembers(members.Payload, true)
-			} else {
-				list.ListMembers(members.Payload, false)
+			if err := presentermember.List(opts, searchQuery, VerboseFlag); err != nil {
+				return err
 			}
 			return nil
 		},

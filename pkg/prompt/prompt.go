@@ -27,6 +27,7 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
 	"github.com/goharbor/harbor-cli/pkg/constants"
+	presentermember "github.com/goharbor/harbor-cli/pkg/presenter/member"
 	presenterrobot "github.com/goharbor/harbor-cli/pkg/presenter/robot"
 	tview "github.com/goharbor/harbor-cli/pkg/views/artifact/tags/select"
 	"github.com/goharbor/harbor-cli/pkg/views/base/selectionv2"
@@ -140,13 +141,12 @@ func GetProjectNameFromUser() (string, error) {
 
 // GetRoleNameFromUser prompts the user to select a role and returns it.
 func GetRoleNameFromUser() int64 {
-	roleChan := make(chan int64)
-	Roles := []string{"Project Admin", "Developer", "Guest", "Maintainer", "Limited Guest"}
-	go func() {
-		mview.RoleList(Roles, roleChan)
-	}()
+	roleID, err := presentermember.SelectRole()
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	return <-roleChan
+	return roleID
 }
 
 func GetRepoNameFromUser(projectName string) string {
@@ -477,21 +477,13 @@ func GetReplicationTaskIDFromUser(execID int64) int64 {
 
 // Get GetMemberIDFromUser choosing from list of members
 func GetMemberIDFromUser(projectName, memberName string) int64 {
-	memberId := make(chan int64)
-	length := make(chan int)
-	go func() {
-		response, _ := api.ListMembers(projectName, memberName, true)
-		length <- len(response.Payload)
-		mview.MemberList(response.Payload, memberId)
-	}()
-
-	// if no members found, return 0
-	l := <-length
-	if l == 0 {
+	memberID, err := presentermember.SelectMember(projectName, memberName)
+	if err != nil {
+		log.Println(err)
 		return 0
 	}
 
-	return <-memberId
+	return memberID
 }
 
 // Get Member Role ID selection from user
