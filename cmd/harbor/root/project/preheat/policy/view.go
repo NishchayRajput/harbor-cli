@@ -17,9 +17,9 @@ import (
 	"fmt"
 
 	"github.com/goharbor/harbor-cli/pkg/api"
+	preheatpolicy "github.com/goharbor/harbor-cli/pkg/presenter/preheat/policy"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	view "github.com/goharbor/harbor-cli/pkg/views/preheat/policy/view"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -73,23 +73,24 @@ func ViewPolicyCommand() *cobra.Command {
 				}
 			}
 
-			log.Debug("Fetching preheat policy...")
-			resp, err := api.GetPreheatPolicy(projectName, policyName)
-			if err != nil {
-				if utils.ParseHarborErrorCode(err) == "404" {
-					return fmt.Errorf("preheat policy %s not found in project %s", policyName, projectName)
-				}
-				return fmt.Errorf("failed to get preheat policy: %v", utils.ParseHarborErrorMsg(err))
-			}
-
 			FormatFlag := viper.GetString("output-format")
 			if FormatFlag != "" {
+				log.Debug("Fetching preheat policy...")
+				resp, err := api.GetPreheatPolicy(projectName, policyName)
+				if err != nil {
+					if utils.ParseHarborErrorCode(err) == "404" {
+						return fmt.Errorf("preheat policy %s not found in project %s", policyName, projectName)
+					}
+					return fmt.Errorf("failed to get preheat policy: %v", utils.ParseHarborErrorMsg(err))
+				}
 				err = utils.PrintFormat(resp.Payload, FormatFlag)
 				if err != nil {
 					return err
 				}
 			} else {
-				view.ViewPolicy(resp.Payload)
+				if err := preheatpolicy.View(projectName, policyName); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

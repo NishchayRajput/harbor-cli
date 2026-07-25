@@ -1,0 +1,106 @@
+// Copyright Project Harbor Authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+// http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+package execution
+
+import (
+	"errors"
+	"fmt"
+	"strconv"
+
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
+	"github.com/goharbor/harbor-cli/pkg/api"
+	"github.com/goharbor/harbor-cli/pkg/utils"
+	"github.com/goharbor/harbor-cli/pkg/views/base/tablelist"
+	"github.com/goharbor/harbor-cli/pkg/views/base/tablelistv2"
+)
+
+var listColumns = []table.Column{
+	{Title: "ID", Width: tablelist.WidthS},
+	{Title: "Status", Width: tablelist.WidthM},
+	{Title: "Trigger", Width: tablelist.WidthM},
+	{Title: "Success Rate", Width: tablelist.WidthM},
+	{Title: "Start Time", Width: tablelist.WidthL},
+	{Title: "End Time", Width: tablelist.WidthL},
+	{Title: "Vendor", Width: tablelist.WidthM},
+}
+
+func List(projectName, policyName string, opts api.ListFlags) error {
+	model := tablelistv2.NewModel(
+		listColumns,
+		fmt.Sprintf("Loading preheat executions for %s/%s...", projectName, policyName),
+		loadRows(projectName, policyName, opts),
+	)
+
+	finalModel, err := tea.NewProgram(model).Run()
+	if err != nil {
+		return fmt.Errorf("error running preheat execution list: %w", err)
+	}
+
+	loadedModel, ok := finalModel.(tablelistv2.Model)
+	if !ok {
+		return errors.New("unexpected preheat execution list model result")
+	}
+
+	return loadedModel.Err
+}
+
+func loadRows(projectName, policyName string, opts api.ListFlags) tablelistv2.Loader {
+	return func() ([]table.Row, error) {
+		response, err := api.ListPreheatExecutions(projectName, policyName, opts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list preheat executions: %v", utils.ParseHarborErrorMsg(err))
+		}
+		if len(response.Payload) == 0 {
+			return nil, errors.New("no preheat executions found")
+		}
+
+		return buildRows(response.Payload), nil
+	}
+}
+
+func buildRows(executions []*models.Execution) []table.Row {
+	rows := make([]table.Row, 0, len(executions))
+
+	for _, execution := range executions {
+		rows = append(rows, buildRow(execution))
+	}
+
+	return rows
+}
+
+func buildRow(execution *models.Execution) table.Row {
+	startTime, _ := utils.FormatCreatedTime(execution.StartTime)
+	endTime := "-"
+	if execution.Status != "Running" {
+		endTime, _ = utils.FormatCreatedTime(execution.EndTime)
+	}
+
+	successRate := "-"
+	if metrics := execution.Metrics; metrics != nil && metrics.TaskCount > 0 {
+		successRate = fmt.Sprintf("%d%%", metrics.SuccessTaskCount*100/metrics.TaskCount)
+	}
+
+	return table.Row{
+		strconv.FormatInt(execution.ID, 10),
+		execution.Status,
+		execution.Trigger,
+		successRate,
+		startTime,
+		endTime,
+		execution.VendorType,
+	}
+}

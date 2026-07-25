@@ -17,9 +17,9 @@ import (
 	"fmt"
 
 	"github.com/goharbor/harbor-cli/pkg/api"
+	preheatexecution "github.com/goharbor/harbor-cli/pkg/presenter/preheat/execution"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/preheat/execution/list"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -80,28 +80,29 @@ func ListExecutionCommand() *cobra.Command {
 				}
 			}
 
-			log.Debug("Fetching preheat policy executions...")
-			resp, err := api.ListPreheatExecutions(projectName, policyName, opts)
-			if err != nil {
-				if utils.ParseHarborErrorCode(err) == "404" {
-					return fmt.Errorf("no executions found for policy %s in project %s", policyName, projectName)
-				}
-				return fmt.Errorf("failed to list preheat executions: %v", utils.ParseHarborErrorMsg(err))
-			}
-
-			if len(resp.Payload) == 0 {
-				fmt.Println("No executions found")
-				return nil
-			}
-
 			FormatFlag := viper.GetString("output-format")
 			if FormatFlag != "" {
+				log.Debug("Fetching preheat policy executions...")
+				resp, err := api.ListPreheatExecutions(projectName, policyName, opts)
+				if err != nil {
+					if utils.ParseHarborErrorCode(err) == "404" {
+						return fmt.Errorf("no executions found for policy %s in project %s", policyName, projectName)
+					}
+					return fmt.Errorf("failed to list preheat executions: %v", utils.ParseHarborErrorMsg(err))
+				}
+
+				if len(resp.Payload) == 0 {
+					fmt.Println("No executions found")
+					return nil
+				}
 				err = utils.PrintFormat(resp.Payload, FormatFlag)
 				if err != nil {
 					return err
 				}
 			} else {
-				list.ListExecutions(resp.Payload)
+				if err := preheatexecution.List(projectName, policyName, opts); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

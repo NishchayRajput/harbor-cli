@@ -27,6 +27,8 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
 	"github.com/goharbor/harbor-cli/pkg/constants"
+	preheatexecution "github.com/goharbor/harbor-cli/pkg/presenter/preheat/execution"
+	preheatpolicy "github.com/goharbor/harbor-cli/pkg/presenter/preheat/policy"
 	presenterrobot "github.com/goharbor/harbor-cli/pkg/presenter/robot"
 	tview "github.com/goharbor/harbor-cli/pkg/views/artifact/tags/select"
 	"github.com/goharbor/harbor-cli/pkg/views/base/selectionv2"
@@ -40,9 +42,6 @@ import (
 	rexecutions "github.com/goharbor/harbor-cli/pkg/views/replication/execution/select"
 	rpolicies "github.com/goharbor/harbor-cli/pkg/views/replication/policies/select"
 	rtasks "github.com/goharbor/harbor-cli/pkg/views/replication/task/select"
-
-	phexecutions "github.com/goharbor/harbor-cli/pkg/views/preheat/execution/select"
-	phpolicies "github.com/goharbor/harbor-cli/pkg/views/preheat/policy/select"
 
 	retview "github.com/goharbor/harbor-cli/pkg/views/retention/select"
 	robotView "github.com/goharbor/harbor-cli/pkg/views/robot/select"
@@ -515,73 +514,9 @@ func GetRetentionTagRule(retentionID string) int64 {
 }
 
 func GetPreheatPolicyNameFromUser(projectName string) (string, error) {
-	type result struct {
-		name string
-		err  error
-	}
-	resultChan := make(chan result)
-
-	go func() {
-		response, err := api.ListPreheatPolicies(projectName, false)
-		if err != nil {
-			resultChan <- result{"", err}
-			return
-		}
-
-		if len(response.Payload) == 0 {
-			resultChan <- result{"", errors.New("no preheat policies found")}
-			return
-		}
-
-		name, err := phpolicies.PreheatPolicyList(response.Payload)
-		if err != nil {
-			if err == phpolicies.ErrUserAborted {
-				resultChan <- result{"", errors.New("user aborted policy selection")}
-			} else {
-				resultChan <- result{"", fmt.Errorf("error during policy selection: %w", err)}
-			}
-			return
-		}
-
-		resultChan <- result{name, nil}
-	}()
-
-	res := <-resultChan
-	return res.name, res.err
+	return preheatpolicy.Select(projectName)
 }
 
 func GetPreheatPolicyExecIDFromUser(projectName string, policyName string) (int64, error) {
-	type result struct {
-		id  int64
-		err error
-	}
-	executionID := make(chan result)
-
-	go func() {
-		response, err := api.ListPreheatExecutions(projectName, policyName)
-		if err != nil {
-			executionID <- result{0, err}
-			return
-		}
-
-		if len(response.Payload) == 0 {
-			executionID <- result{0, errors.New("no preheat executions found")}
-			return
-		}
-
-		id, err := phexecutions.PreheatExecutionList(response.Payload)
-		if err != nil {
-			if err == phexecutions.ErrUserAborted {
-				executionID <- result{0, errors.New("user aborted execution selection")}
-			} else {
-				executionID <- result{0, fmt.Errorf("error during execution selection: %w", err)}
-			}
-			return
-		}
-
-		executionID <- result{id, nil}
-	}()
-
-	res := <-executionID
-	return res.id, res.err
+	return preheatexecution.Select(projectName, policyName)
 }
