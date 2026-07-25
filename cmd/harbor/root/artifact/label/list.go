@@ -16,11 +16,10 @@ package label
 import (
 	"fmt"
 
-	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	"github.com/goharbor/harbor-cli/pkg/api"
+	artifactpresenter "github.com/goharbor/harbor-cli/pkg/presenter/artifact"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/label/list"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -50,8 +49,6 @@ Supports output formatting such as JSON or YAML using the --output (-o) flag.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			var projectName, repoName, reference string
-			var artifact *artifact.GetArtifactOK
-			getLabel := true
 			if len(args) > 0 {
 				projectName, repoName, reference, err = utils.ParseProjectRepoReference(args[0])
 				if err != nil {
@@ -74,24 +71,25 @@ Supports output formatting such as JSON or YAML using the --output (-o) flag.`,
 				}
 			}
 
-			artifact, err = api.ViewArtifact(projectName, repoName, reference, getLabel)
-
-			if err != nil || artifact == nil {
-				return fmt.Errorf("failed to get info of an artifact: %v", utils.ParseHarborErrorMsg(err))
-			}
-			labelList := artifact.Payload.Labels
-			if len(labelList) == 0 {
-				fmt.Printf("No labels found for artifact %s/%s@%s", projectName, repoName, reference)
-				return nil
-			}
 			formatFlag := viper.GetString("output-format")
 			if formatFlag != "" {
+				artifact, err := api.ViewArtifact(projectName, repoName, reference, true)
+				if err != nil || artifact == nil {
+					return fmt.Errorf("failed to get info of an artifact: %v", utils.ParseHarborErrorMsg(err))
+				}
+				labelList := artifact.Payload.Labels
+				if len(labelList) == 0 {
+					fmt.Printf("No labels found for artifact %s/%s@%s", projectName, repoName, reference)
+					return nil
+				}
 				err = utils.PrintFormat(labelList, formatFlag)
 				if err != nil {
 					return err
 				}
 			} else {
-				list.ListLabels(labelList)
+				if err := artifactpresenter.ListLabels(projectName, repoName, reference); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

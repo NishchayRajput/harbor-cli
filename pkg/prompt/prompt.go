@@ -27,8 +27,8 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
 	"github.com/goharbor/harbor-cli/pkg/constants"
+	presenterartifact "github.com/goharbor/harbor-cli/pkg/presenter/artifact"
 	presenterrobot "github.com/goharbor/harbor-cli/pkg/presenter/robot"
-	tview "github.com/goharbor/harbor-cli/pkg/views/artifact/tags/select"
 	"github.com/goharbor/harbor-cli/pkg/views/base/selectionv2"
 	immview "github.com/goharbor/harbor-cli/pkg/views/immutable/select"
 	instview "github.com/goharbor/harbor-cli/pkg/views/instance/select"
@@ -188,39 +188,12 @@ func GetRepoNameFromUser(projectName string) string {
 
 // complete the function
 func GetReferenceFromUser(repositoryName string, projectName string) string {
-	model := selectionv2.NewModel("Artifact", fmt.Sprintf("Loading artifacts for %s/%s...", projectName, repositoryName), func() ([]listpkg.Item, error) {
-		response, err := api.ListArtifact(projectName, repositoryName)
-		if err != nil {
-			return nil, err
-		}
-		if len(response.Payload) == 0 {
-			return nil, errors.New("no artifacts found")
-		}
-
-		items := make([]listpkg.Item, len(response.Payload))
-		for i, artifact := range response.Payload {
-			items[i] = selectionv2.Item(artifact.Digest)
-		}
-		return items, nil
-	})
-
-	finalModel, err := tea.NewProgram(model).Run()
+	choice, err := presenterartifact.SelectReference(projectName, repositoryName)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	selectionModel, ok := finalModel.(selectionv2.Model)
-	if !ok || selectionModel.Choice == "" {
-		log.Fatal("failed to select artifact")
-	}
-	if selectionModel.Err != nil {
-		log.Fatal(selectionModel.Err)
-	}
-	if selectionModel.Aborted {
-		log.Fatal("user aborted artifact selection")
-	}
-
-	return selectionModel.Choice
+	return choice
 }
 
 func GetUserIdFromUser() (int64, error) {
@@ -247,12 +220,12 @@ func GetImmutableTagRule(projectName string) int64 {
 }
 
 func GetTagFromUser(repoName, projectName, reference string) string {
-	tag := make(chan string)
-	go func() {
-		response, _ := api.ListTags(projectName, repoName, reference)
-		tview.ListTags(response.Payload, tag)
-	}()
-	return <-tag
+	tag, err := presenterartifact.SelectTag(projectName, repoName, reference)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return tag
 }
 
 func GetScannerIdFromUser() string {

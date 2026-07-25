@@ -17,11 +17,10 @@ package artifacttags
 import (
 	"fmt"
 
-	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	"github.com/goharbor/harbor-cli/pkg/api"
+	artifactpresenter "github.com/goharbor/harbor-cli/pkg/presenter/artifact"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/artifact/tags/list"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,7 +32,6 @@ func ListTagsCmd() *cobra.Command {
 		Example: `harbor artifact tags list <project>/<repository>/<reference>`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
-			var tags *artifact.ListTagsOK
 			var projectName, repoName, reference string
 
 			if len(args) > 0 {
@@ -54,19 +52,20 @@ func ListTagsCmd() *cobra.Command {
 				reference = prompt.GetReferenceFromUser(repoName, projectName)
 			}
 
-			tags, err = api.ListTags(projectName, repoName, reference)
-			if err != nil {
-				return fmt.Errorf("failed to list tags: %v", err)
-			}
-
 			FormatFlag := viper.GetString("output-format")
 			if FormatFlag != "" {
+				tags, err := api.ListTags(projectName, repoName, reference)
+				if err != nil {
+					return fmt.Errorf("failed to list tags: %v", err)
+				}
 				err = utils.PrintFormat(tags, FormatFlag)
 				if err != nil {
 					return err
 				}
 			} else {
-				list.ListTags(tags.Payload)
+				if err := artifactpresenter.ListTags(projectName, repoName, reference); err != nil {
+					return err
+				}
 			}
 
 			return nil

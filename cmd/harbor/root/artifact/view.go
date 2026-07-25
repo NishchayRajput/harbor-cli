@@ -16,11 +16,10 @@ package artifact
 import (
 	"fmt"
 
-	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/artifact"
 	"github.com/goharbor/harbor-cli/pkg/api"
+	artifactpresenter "github.com/goharbor/harbor-cli/pkg/presenter/artifact"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/artifact/view"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -34,7 +33,6 @@ func ViewArtifactCommmand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			var err error
 			var projectName, repoName, reference string
-			var artifact *artifact.GetArtifactOK
 
 			if len(args) > 0 {
 				projectName, repoName, reference, err = utils.ParseProjectRepoReference(args[0])
@@ -57,20 +55,20 @@ func ViewArtifactCommmand() *cobra.Command {
 				return fmt.Errorf("invalid artifact reference format: no arguments provided")
 			}
 
-			artifact, err = api.ViewArtifact(projectName, repoName, reference, false)
-
-			if err != nil {
-				return fmt.Errorf("failed to get info of an artifact: %v", err)
-			}
-
 			FormatFlag := viper.GetString("output-format")
 			if FormatFlag != "" {
+				artifact, err := api.ViewArtifact(projectName, repoName, reference, false)
+				if err != nil {
+					return fmt.Errorf("failed to get info of an artifact: %v", err)
+				}
 				err = utils.PrintFormat(artifact, FormatFlag)
 				if err != nil {
 					return err
 				}
 			} else {
-				view.ViewArtifact(artifact.Payload)
+				if err := artifactpresenter.ViewArtifact(projectName, repoName, reference); err != nil {
+					return err
+				}
 			}
 			return nil
 		},
