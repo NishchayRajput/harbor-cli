@@ -18,9 +18,9 @@ import (
 
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/immutable"
 	"github.com/goharbor/harbor-cli/pkg/api"
+	presenterimmutable "github.com/goharbor/harbor-cli/pkg/presenter/immutable"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/immutable/list"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -54,13 +54,12 @@ You can specify the project name as an argument or, if omitted, you will be prom
 				}
 			}
 
-			resp, err = api.ListImmutable(projectName)
-			if err != nil {
-				return fmt.Errorf("failed to list immutablility rule: %v", err)
-			}
-
 			FormatFlag := viper.GetString("output-format")
 			if FormatFlag != "" {
+				resp, err = api.ListImmutable(projectName)
+				if err != nil {
+					return fmt.Errorf("failed to list immutablility rule: %v", err)
+				}
 				err = utils.PrintFormat(resp.Payload, FormatFlag)
 				if err != nil {
 					return err
@@ -68,11 +67,9 @@ You can specify the project name as an argument or, if omitted, you will be prom
 				return nil
 			}
 
-			if len(resp.Payload) == 0 {
-				fmt.Println("No immutable tag rules found.")
-				return nil
+			if err := presenterimmutable.ListRules(projectName); err != nil {
+				return err
 			}
-			list.ListImmuRules(resp.Payload)
 
 			return nil
 		},

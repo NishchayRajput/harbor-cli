@@ -27,10 +27,10 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
 	"github.com/goharbor/harbor-cli/pkg/constants"
+	presenterimmutable "github.com/goharbor/harbor-cli/pkg/presenter/immutable"
 	presenterrobot "github.com/goharbor/harbor-cli/pkg/presenter/robot"
 	tview "github.com/goharbor/harbor-cli/pkg/views/artifact/tags/select"
 	"github.com/goharbor/harbor-cli/pkg/views/base/selectionv2"
-	immview "github.com/goharbor/harbor-cli/pkg/views/immutable/select"
 	instview "github.com/goharbor/harbor-cli/pkg/views/instance/select"
 	lview "github.com/goharbor/harbor-cli/pkg/views/label/select"
 	mview "github.com/goharbor/harbor-cli/pkg/views/member/select"
@@ -238,12 +238,12 @@ func GetUserIdFromUser() (int64, error) {
 }
 
 func GetImmutableTagRule(projectName string) int64 {
-	immutableid := make(chan int64)
-	go func() {
-		response, _ := api.ListImmutable(projectName)
-		immview.ImmutableList(response.Payload, immutableid)
-	}()
-	return <-immutableid
+	immutableID, err := presenterimmutable.SelectRule(projectName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return immutableID
 }
 
 func GetTagFromUser(repoName, projectName, reference string) string {
