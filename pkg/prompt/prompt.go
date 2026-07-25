@@ -27,12 +27,12 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
 	"github.com/goharbor/harbor-cli/pkg/constants"
+	presenterlabel "github.com/goharbor/harbor-cli/pkg/presenter/label"
 	presenterrobot "github.com/goharbor/harbor-cli/pkg/presenter/robot"
 	tview "github.com/goharbor/harbor-cli/pkg/views/artifact/tags/select"
 	"github.com/goharbor/harbor-cli/pkg/views/base/selectionv2"
 	immview "github.com/goharbor/harbor-cli/pkg/views/immutable/select"
 	instview "github.com/goharbor/harbor-cli/pkg/views/instance/select"
-	lview "github.com/goharbor/harbor-cli/pkg/views/label/select"
 	mview "github.com/goharbor/harbor-cli/pkg/views/member/select"
 	pview "github.com/goharbor/harbor-cli/pkg/views/project/select"
 	qview "github.com/goharbor/harbor-cli/pkg/views/quota/select"
@@ -303,27 +303,7 @@ func GetWebhookFromUser(projectName string) (models.WebhookPolicy, error) {
 }
 
 func GetLabelIdFromUser(opts api.ListFlags) (int64, error) {
-	type result struct {
-		id  int64
-		err error
-	}
-	labelId := make(chan result)
-	go func() {
-		response, err := api.ListLabel(opts)
-		if err != nil {
-			labelId <- result{0, err}
-			return
-		}
-		choice, err := lview.LabelList(response.Payload)
-		if err != nil {
-			labelId <- result{0, err}
-			return
-		}
-		labelId <- result{choice, nil}
-	}()
-
-	res := <-labelId
-	return res.id, res.err
+	return presenterlabel.SelectLabelID(opts)
 }
 
 func GetInstanceNameFromUser() (string, error) {
