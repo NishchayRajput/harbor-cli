@@ -17,8 +17,8 @@ import (
 	"fmt"
 
 	"github.com/goharbor/harbor-cli/pkg/api"
+	presenterinstance "github.com/goharbor/harbor-cli/pkg/presenter/instance"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/instance/list"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -45,19 +45,20 @@ This command provides an easy way to view all instances along with their details
 				return fmt.Errorf("page size should be less than or equal to 100")
 			}
 
-			instance, err := api.ListAllInstance(opts)
-
-			if err != nil {
-				return fmt.Errorf("failed to get instance list: %v", err)
-			}
 			FormatFlag := viper.GetString("output-format")
 			if FormatFlag != "" {
+				instance, err := api.ListAllInstance(opts)
+				if err != nil {
+					return fmt.Errorf("failed to get instance list: %v", err)
+				}
 				err = utils.PrintFormat(instance, FormatFlag)
 				if err != nil {
 					return fmt.Errorf("Failed to print config: %v", err)
 				}
 			} else {
-				list.ListInstance(instance.Payload)
+				if err := presenterinstance.List(opts); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

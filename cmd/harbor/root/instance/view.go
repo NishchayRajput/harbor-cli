@@ -18,9 +18,9 @@ import (
 
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/client/preheat"
 	"github.com/goharbor/harbor-cli/pkg/api"
+	presenterinstance "github.com/goharbor/harbor-cli/pkg/presenter/instance"
 	"github.com/goharbor/harbor-cli/pkg/prompt"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/instance/view"
 	log "github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -57,23 +57,24 @@ an instance from a list of available instances.`,
 				}
 			}
 
-			log.Debugf("Fetching instance: %s", instanceName)
-			instance, err = api.GetInstance(instanceName, isID)
-			if err != nil {
-				if utils.ParseHarborErrorCode(err) == "404" {
-					return fmt.Errorf("instance %s does not exist", instanceName)
-				}
-				return fmt.Errorf("failed to get instance: %v", utils.ParseHarborErrorMsg(err))
-			}
-
 			FormatFlag := viper.GetString("output-format")
 			if FormatFlag != "" {
+				log.Debugf("Fetching instance: %s", instanceName)
+				instance, err = api.GetInstance(instanceName, isID)
+				if err != nil {
+					if utils.ParseHarborErrorCode(err) == "404" {
+						return fmt.Errorf("instance %s does not exist", instanceName)
+					}
+					return fmt.Errorf("failed to get instance: %v", utils.ParseHarborErrorMsg(err))
+				}
 				err = utils.PrintFormat(instance, FormatFlag)
 				if err != nil {
 					return err
 				}
 			} else {
-				view.ViewInstance(instance.Payload)
+				if err := presenterinstance.View(instanceName, isID); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

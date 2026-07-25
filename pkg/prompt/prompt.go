@@ -27,11 +27,11 @@ import (
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
 	"github.com/goharbor/harbor-cli/pkg/constants"
+	presenterinstance "github.com/goharbor/harbor-cli/pkg/presenter/instance"
 	presenterrobot "github.com/goharbor/harbor-cli/pkg/presenter/robot"
 	tview "github.com/goharbor/harbor-cli/pkg/views/artifact/tags/select"
 	"github.com/goharbor/harbor-cli/pkg/views/base/selectionv2"
 	immview "github.com/goharbor/harbor-cli/pkg/views/immutable/select"
-	instview "github.com/goharbor/harbor-cli/pkg/views/instance/select"
 	lview "github.com/goharbor/harbor-cli/pkg/views/label/select"
 	mview "github.com/goharbor/harbor-cli/pkg/views/member/select"
 	pview "github.com/goharbor/harbor-cli/pkg/views/project/select"
@@ -327,38 +327,7 @@ func GetLabelIdFromUser(opts api.ListFlags) (int64, error) {
 }
 
 func GetInstanceNameFromUser() (string, error) {
-	type result struct {
-		name string
-		err  error
-	}
-	resultChan := make(chan result)
-
-	go func() {
-		response, err := api.ListAllInstance()
-		if err != nil {
-			resultChan <- result{"", err}
-			return
-		}
-
-		if len(response.Payload) == 0 {
-			resultChan <- result{"", errors.New("no instances found")}
-			return
-		}
-
-		name, err := instview.InstanceList(response.Payload)
-		if err != nil {
-			if err == instview.ErrUserAborted {
-				resultChan <- result{"", errors.New("user aborted instance selection")}
-			} else {
-				resultChan <- result{"", fmt.Errorf("error during instance selection: %w", err)}
-			}
-			return
-		}
-		resultChan <- result{name, nil}
-	}()
-
-	res := <-resultChan
-	return res.name, res.err
+	return presenterinstance.Select()
 }
 
 func GetQuotaIDFromUser() int64 {
