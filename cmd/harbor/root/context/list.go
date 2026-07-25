@@ -17,9 +17,8 @@ package context
 import (
 	"fmt"
 
-	"github.com/goharbor/harbor-cli/pkg/api"
+	contextpresenter "github.com/goharbor/harbor-cli/pkg/presenter/context"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	"github.com/goharbor/harbor-cli/pkg/views/context/list"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -31,27 +30,22 @@ func ListContextCommand() *cobra.Command {
 		Example: `  harbor context list`,
 		Args:    cobra.MaximumNArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			config, err := utils.GetCurrentHarborConfig()
-			if err != nil {
-				return fmt.Errorf("failed to get config: %w", err)
-			}
-
 			// Get the output format
 			formatFlag := viper.GetString("output-format")
 			if formatFlag != "" {
+				config, err := utils.GetCurrentHarborConfig()
+				if err != nil {
+					return fmt.Errorf("failed to get config: %w", err)
+				}
 				// Use utils.PrintFormat if available
 				err = utils.PrintFormat(config, formatFlag)
 				if err != nil {
 					return fmt.Errorf("failed to print config: %w", err)
 				}
 			} else {
-				var cxlist []api.ContextListView
-				for _, cred := range config.Credentials {
-					cx := api.ContextListView{Name: cred.Name, Username: cred.Username, Server: cred.ServerAddress}
-					cxlist = append(cxlist, cx)
+				if err := contextpresenter.ListContexts(); err != nil {
+					return err
 				}
-				currentCredential := config.CurrentCredentialName
-				list.ListContexts(cxlist, currentCredential)
 			}
 			return nil
 		},

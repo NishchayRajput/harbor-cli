@@ -21,8 +21,8 @@ import (
 
 	listpkg "github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	presentercontext "github.com/goharbor/harbor-cli/pkg/presenter/context"
 	"github.com/goharbor/harbor-cli/pkg/utils"
-	contextswitch "github.com/goharbor/harbor-cli/pkg/views/context/switch"
 
 	"github.com/goharbor/go-client/pkg/sdk/v2.0/models"
 	"github.com/goharbor/harbor-cli/pkg/api"
@@ -376,22 +376,16 @@ func GetQuotaIDFromUser() int64 {
 }
 
 func GetActiveContextFromUser() (string, error) {
-	config, err := utils.GetCurrentHarborConfig()
-	if err != nil {
-		return "", err
-	}
-	var cxlist []api.ContextListView
-	for _, cred := range config.Credentials {
-		cx := api.ContextListView{Name: cred.Name, Username: cred.Username, Server: cred.ServerAddress}
-		cxlist = append(cxlist, cx)
-	}
-
-	res, err := contextswitch.ContextList(cxlist, config.CurrentCredentialName)
+	res, err := presentercontext.SelectActiveContext()
 	if err != nil {
 		return "", err
 	}
 
-	return res, nil
+	if len(res) < 2 {
+		return "", errors.New("invalid context selection")
+	}
+
+	return res[2:], nil
 }
 
 func GetRobotPermissionsFromUser(kind string) ([]models.Permission, error) {
